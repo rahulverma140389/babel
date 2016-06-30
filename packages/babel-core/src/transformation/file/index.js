@@ -21,6 +21,8 @@ import * as util from  "../../util";
 import path from "path";
 import * as t from "babel-types";
 
+import resolve from "../../helpers/resolve";
+
 import blockHoistPlugin from "../internal-plugins/block-hoist";
 import shadowFunctionsPlugin from "../internal-plugins/shadow-functions";
 
@@ -410,8 +412,30 @@ export default class File extends Store {
   }
 
   parse(code: string) {
+    let opts = this.opts;
+    let parseCode = parse;
+    if (opts.parserOpts.parser) {
+      parseCode = opts.parserOpts.parser;
+
+      if (typeof opts.parserOpts.parser === "string") {
+        let parserPath = opts.parserOpts.parser;
+        let dirname = opts.generatorOpts.dirname || process.cwd();
+        let parser = resolve(parserPath, dirname) || resolve(parserPath, dirname);
+        if (parser) {
+          parseCode = require(parser);
+        } else {
+          throw new Error(`Couldn't find parser ${JSON.stringify(parserPath)} relative to directory ${JSON.stringify(dirname)}`);
+        }
+
+      }
+
+      Object.assign(this.parserOpts, {
+        parser: require("babylon")
+      });
+    }
+
     this.log.debug("Parse start");
-    let ast = parse(code, this.parserOpts);
+    let ast = parseCode(code, this.parserOpts);
     this.log.debug("Parse stop");
     return ast;
   }
@@ -568,9 +592,25 @@ export default class File extends Store {
     let result: BabelFileResult = { ast };
     if (!opts.code) return this.makeResult(result);
 
+    let gen = generate;
+    if (opts.generatorOpts.generator) {
+      gen = opts.generatorOpts.generator;
+
+      if (typeof opts.generatorOpts.generator === "string") {
+        let generatorPath = opts.generatorOpts.generator;
+        let dirname = opts.generatorOpts.dirname || process.cwd();
+        let generator = resolve(generatorPath, dirname) || resolve(generatorPath, dirname);
+        if (generator) {
+          gen = require(generator);
+        } else {
+          throw new Error(`Couldn't find generator ${JSON.stringify(generatorPath)} relative to directory ${JSON.stringify(dirname)}`);
+        }
+      }
+    }
+
     this.log.debug("Generation start");
 
-    let _result = generate(ast, opts, this.code);
+    let _result = gen(ast, opts, this.code);
     result.code = _result.code;
     result.map  = _result.map;
 

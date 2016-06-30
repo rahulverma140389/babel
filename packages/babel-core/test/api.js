@@ -5,6 +5,7 @@ var sourceMap            = require("source-map");
 var assert               = require("assert");
 var File                 = require("../lib/transformation/file").default;
 var Plugin               = require("../lib/transformation/plugin");
+var recast               = require("recast");
 
 function assertIgnored(result) {
   assert.ok(result.ignored);
@@ -73,6 +74,68 @@ suite("api", function () {
       plugins: [__dirname + "/../../babel-plugin-syntax-jsx"]
     }).then(function (result) {
       assert.ok(result.options.plugins[0][0].manipulateOptions.toString().indexOf("jsx") >= 0);
+    });
+  });
+
+  suite("parser and generator options", function() {
+    function execTest() {
+      return babel.transform("var a = { b: b };", {
+        plugins: [
+          new Plugin({
+            pre: function() {
+              console.log("plugin called!");
+            },
+            visitor: {
+              ObjectProperty: function(path) {
+                console.log("visit ObjectProperty");
+                var node = path.node;
+                if (!node.shorthand &&
+                    node.key.name === node.value.name) {
+                    console.log("change to shorthand");
+                    node.shorthand = true;
+                }
+              }
+            }
+          })
+        ],
+        parserOpts: {
+          parser: recast.parse
+        },
+        generatorOpts: {
+          generator: recast.print
+        }
+      });
+    }
+
+    test("recast", function() {
+      // console.log(recast.types);
+
+      var def = recast.types.Type.def
+      var or = recast.types.Type.or;
+      var defaults = {
+        "null": function() { return null },
+        "emptyArray": function() { return [] },
+        "false": function() { return false },
+        "true": function() { return true },
+        "undefined": function() {}
+      }
+
+      def("ObjectProperty")
+        .bases("Node") // Want to be able to visit Property Nodes.
+        .build("key", "value", "computed", "shorthand", "decorators")
+
+        .field("key", or(def("Literal"), def("Identifier"), def("Expression")))
+        .field("value", or(def("Expression"), def("Pattern")))
+        .field("shorthand", Boolean, defaults["false"])
+        .field("computed", Boolean, defaults["false"])
+        .field("decorators",
+          or([def("Decorator")], null),
+          defaults["null"]);
+
+      recast.types.finalize();
+
+      var result = execTest();
+      assert.equal(result.code, "var a = { b };");
     });
   });
 
