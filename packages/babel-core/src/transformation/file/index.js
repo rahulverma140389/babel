@@ -21,8 +21,6 @@ import * as util from  "../../util";
 import path from "path";
 import * as t from "babel-types";
 
-import resolve from "../../helpers/resolve";
-
 import blockHoistPlugin from "../internal-plugins/block-hoist";
 import shadowFunctionsPlugin from "../internal-plugins/shadow-functions";
 
@@ -414,21 +412,13 @@ export default class File extends Store {
   parse(code: string) {
     let opts = this.opts;
     let parseCode = parse;
-    if (opts.parserOpts.parser) {
-      parseCode = opts.parserOpts.parser;
 
-      if (typeof opts.parserOpts.parser === "string") {
-        let parserPath = opts.parserOpts.parser;
-        let dirname = opts.generatorOpts.dirname || process.cwd();
-        let parser = resolve(parserPath, dirname) || resolve(parserPath, dirname);
-        if (parser) {
-          parseCode = require(parser);
-        } else {
-          throw new Error(`Couldn't find parser ${JSON.stringify(parserPath)} relative to directory ${JSON.stringify(dirname)}`);
-        }
-
+    if (opts.parserOpts.recast) {
+      try {
+        parseCode = require("recast").parse;
+      } catch (e) {
+        throw new Error(`Couldn't find parser ${JSON.stringify(parserPath)}`);
       }
-
       Object.assign(this.parserOpts, {
         parser: require("babylon")
       });
@@ -593,18 +583,12 @@ export default class File extends Store {
     if (!opts.code) return this.makeResult(result);
 
     let gen = generate;
-    if (opts.generatorOpts.generator) {
-      gen = opts.generatorOpts.generator;
-
-      if (typeof opts.generatorOpts.generator === "string") {
-        let generatorPath = opts.generatorOpts.generator;
-        let dirname = opts.generatorOpts.dirname || process.cwd();
-        let generator = resolve(generatorPath, dirname) || resolve(generatorPath, dirname);
-        if (generator) {
-          gen = require(generator);
-        } else {
-          throw new Error(`Couldn't find generator ${JSON.stringify(generatorPath)} relative to directory ${JSON.stringify(dirname)}`);
-        }
+    if (opts.generatorOpts.recast) {
+      try {
+        let recast = require("recast");
+        gen = recast.generator || recast.print;
+      } catch (e) {
+        throw new Error(`Couldn't find generator ${JSON.stringify(generatorPath)}`);
       }
     }
 

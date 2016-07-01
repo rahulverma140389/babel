@@ -77,21 +77,16 @@ suite("api", function () {
     });
   });
 
-  suite("parser and generator options", function() {
+  suite("parser and generator with recast", function() {
     function execTest() {
-      return babel.transform("var a = { b: b };", {
+      return babel.transform("var a={ b: b };", {
         plugins: [
           new Plugin({
-            pre: function() {
-              console.log("plugin called!");
-            },
             visitor: {
               ObjectProperty: function(path) {
-                console.log("visit ObjectProperty");
                 var node = path.node;
                 if (!node.shorthand &&
                     node.key.name === node.value.name) {
-                    console.log("change to shorthand");
                     node.shorthand = true;
                 }
               }
@@ -99,17 +94,15 @@ suite("api", function () {
           })
         ],
         parserOpts: {
-          parser: recast.parse
+          recast: true
         },
         generatorOpts: {
-          generator: recast.print
+          recast: true
         }
       });
     }
 
-    test("recast", function() {
-      // console.log(recast.types);
-
+    test("can transform and keep formatting", function() {
       var def = recast.types.Type.def
       var or = recast.types.Type.or;
       var defaults = {
@@ -135,7 +128,7 @@ suite("api", function () {
       recast.types.finalize();
 
       var result = execTest();
-      assert.equal(result.code, "var a = { b };");
+      assert.equal(result.code, "var a={ b };");
     });
   });
 
