@@ -413,12 +413,8 @@ export default class File extends Store {
     let opts = this.opts;
     let parseCode = parse;
 
-    if (opts.parserOpts.recast) {
-      try {
-        parseCode = require("recast").parse;
-      } catch (e) {
-        throw new Error(`Couldn't find parser ${JSON.stringify(parserPath)}`);
-      }
+    if (opts.parserOpts && opts.parserOpts.recast) {
+      parseCode = require("recast").parse;
       Object.assign(this.parserOpts, {
         parser: require("babylon")
       });
@@ -583,13 +579,8 @@ export default class File extends Store {
     if (!opts.code) return this.makeResult(result);
 
     let gen = generate;
-    if (opts.generatorOpts.recast) {
-      try {
-        let recast = require("recast");
-        gen = recast.generator || recast.print;
-      } catch (e) {
-        throw new Error(`Couldn't find generator ${JSON.stringify(generatorPath)}`);
-      }
+    if (opts.generatorOpts && opts.generatorOpts.recast) {
+      gen = require("recast").print;
     }
 
     this.log.debug("Generation start");
