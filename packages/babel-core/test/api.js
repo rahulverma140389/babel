@@ -103,30 +103,6 @@ suite("api", function () {
     }
 
     test("can transform and keep formatting", function() {
-      var def = recast.types.Type.def
-      var or = recast.types.Type.or;
-      var defaults = {
-        "null": function() { return null },
-        "emptyArray": function() { return [] },
-        "false": function() { return false },
-        "true": function() { return true },
-        "undefined": function() {}
-      }
-
-      def("ObjectProperty")
-        .bases("Node") // Want to be able to visit Property Nodes.
-        .build("key", "value", "computed", "shorthand", "decorators")
-
-        .field("key", or(def("Literal"), def("Identifier"), def("Expression")))
-        .field("value", or(def("Expression"), def("Pattern")))
-        .field("shorthand", Boolean, defaults["false"])
-        .field("computed", Boolean, defaults["false"])
-        .field("decorators",
-          or([def("Decorator")], null),
-          defaults["null"]);
-
-      recast.types.finalize();
-
       var result = execTest();
       assert.equal(result.code, "var a={ b };");
     });
